@@ -37,7 +37,7 @@
         
             //http://localhost/fyp_api/member.php?function=login&loginId=&password=
         
-        } else if( $function == 'register' ){
+        }else if( $function == 'register' ){
             $loginId = $_POST['loginId'];
             $password = $_POST['password'];
             $name_zh = $_POST['name_zh'];
@@ -58,44 +58,97 @@
                 $final_result = array('status' => "fail", 'data'=>mysql_errno());
             }
             echo json_encode($final_result);
-            
-            
-            
-            
             //http://localhost/fyp_api/member.php?function=register&loginId=&password=
-        } else{
-            $login = $_POST['loginId'];
-            $password = $_POST['password'];
-            $final_result = array('status' => "no function1", 'data'=>$function);
+        }else if ($function == 'reservation'){
+            
+//========================================================================================================
+            $query = "select * from parking_space where status='booked' and time < now()";
+            $result = mysql_query($query);
+           
+            while ( $row = mysql_fetch_assoc($result) ) {
+                $ban = $row['reservationBy'];
+                $query = "update member set badRecord=badRecord+1 where id='$ban'";
+                mysql_query($query);
+                
+                $reset = $row['id'];
+                $query = "update parking_space set time=NULL, status='OK', reservationBy=NULL where id='$reset'";
+                mysql_query($query);
+            }
+//========================================================================================================
+            $id = $_POST['id'];
+            $cid = $_POST['cid'];
+            $query = "select status, badrecord, value, class from member where id='$id'";
+            $result = mysql_query($query);
+            $row = mysql_fetch_assoc($result);
+            if ($row['status'] == 'activate'){
+                if ($row['badrecord'] < 3){
+                    if ($row['value'] > 0){
+                        //member checking all clear
+                        $class = $row['class'];
+                        $query = "select * from parking_space where status='OK' and type='hr' and cp_id='$cid'";
+                        $result = mysql_query($query);
+                        $count = mysql_num_rows($result);
+                            
+                        if ($count == 0){
+                            $final_result = array('status' => "fail", 'data'=>"count");
+                            echo json_encode($final_result);
+                        }else{
+                            while ($row = mysql_fetch_assoc($result)) {
+                                $thisid = $row["id"];
+                                $thiscid = $row["cp_id"];
+                                if ( $class == 'Normal'){
+                                    $query = "update parking_space set status='booked', time=date_add(now(), interval 30 minute), reservationBy='$id' where id='$thisid'";
+                                }else{
+                                    $query = "update parking_space set status='booked', time=date_add(now(), interval 1 hour), reservationBy='$id' where id='$thisid'";
+                                }
+                                $result2 = mysql_query($query);
+                                
+                                $query = "select * from carpark where id='$thiscid'";
+                                $result3 = mysql_query($query);
+                                while ($row = mysql_fetch_assoc($result3)) {
+                                    $price = $row["hourly_space"];    
+                                    $query = "update member set value=value-'$price' where id='$id'";
+                                    mysql_query($query);
+                                }
+                        
+                                
+                                if($result2){
+                                    $id = array('id' => $thisid);
+                                    $final_result = array('status' => "success", 'data'=>$id);
+                                }else{
+                                    $final_result = array('status' => "fail", 'data'=>mysql_errno());
+                                }
+                                echo json_encode($final_result);
+                                break;
+                            } 
+                        }
+                    }else{
+                        $final_result = array('status' => "fail", 'data'=>"value");
+                        echo json_encode($final_result);
+                    }
+                
+                }else{
+                    $final_result = array('status' => "fail", 'data'=>"badrecord");
+                    echo json_encode($final_result);
+                }    
+                
+            }else{
+                $final_result = array('status' => "fail", 'data'=>"status");
+                echo json_encode($final_result);
+            }
+
+            //http://localhost/fyp_api/member.php?function=reservation&id=&cid=
+        }else{
+            $final_result = array('status' => "no post function", 'data'=>null);
             echo json_encode($final_result);
         }
     
-    }else{
+    }else if ($_SERVER['REQUEST_METHOD'] == 'GET') { //get
+        $function = $_GET['function'];
         
-        $function = $_GET['function'];        
-        $final_result = array('status' => "no function", 'data'=>$function);
+         
+        $final_result = array('status' => "no get function", 'data'=>null);
         echo json_encode($final_result);
-
-//        if ($function == "getMemberByLogin"){
-//            $query = "select * from member where login =''";
-//            $result = mysql_query($query);
-//            $arr = array();
-//            while ($row = mysql_fetch_assoc($result)) {
-//                $arr[] = array('area_code' => $row['area_code'],
-//                               'area_name_zh' => $row['area_name_zh'],
-//                               'area_name_en' => $row['area_name_en'] );
-//            }
-//            if(count($arr) == 0){
-//                $final_result = array('status' => "no record", 'data'=>null);
-//            }else{
-//                $final_result = array('status' => "success", 'data'=>$arr);
-//            }
-//            echo json_encode($final_result);
-//            //http://localhost/fyp_api/area.php?function=getArea    
-//        }else{
-//            $final_result = array('status' => "no function", 'data'=>null);
-//            echo json_encode($final_result);
-//        }
-        
+          
     }
 ?>
