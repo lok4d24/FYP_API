@@ -138,6 +138,27 @@
             }
 
             //http://localhost/fyp_api/member.php?function=reservation&id=&cid=
+        }else if($function == 'cancelReserve'){
+                
+//========================================================================================================
+                $query = "select * from parking_space where status='booked' and time < now()";
+                $result = mysql_query($query);
+
+                while ( $row = mysql_fetch_assoc($result) ) {
+                    $ban = $row['reservationBy'];
+                    $query = "update member set badRecord=badRecord+1 where id='$ban'";
+                    mysql_query($query);
+
+                    $reset = $row['id'];
+                    $query = "update parking_space set time=NULL, status='OK', reservationBy=NULL where id='$reset'";
+                    mysql_query($query);
+                }
+//========================================================================================================
+                $id = $_POST['id'];
+                $query = "update parking_space set time=NULL, status='OK', reservationBy=NULL where reservationBy='$id'";
+                mysql_query($query);
+        
+        
         }else{
             $final_result = array('status' => "no post function", 'data'=>null);
             echo json_encode($final_result);
